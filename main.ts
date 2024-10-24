@@ -209,7 +209,7 @@ export default class TraktPlugin extends Plugin {
 class TraktSettingTab extends PluginSettingTab {
 	plugin: TraktPlugin;
 	settings: any
-	displayInterval?: NodeJS.Timer
+	displayInterval?: unknown
 
 	constructor(app: App, plugin: TraktPlugin) {
 		super(app, plugin);
@@ -223,7 +223,7 @@ class TraktSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		if (this.settings.refresh) {
-			clearInterval(this.displayInterval)
+			clearInterval(this.displayInterval as number)
 			new Setting(containerEl)
 				.setName('Connected to Trakt')
 				.addButton((component) => {
