@@ -1,7 +1,7 @@
 {
-	"name": "letterboxd-obsidian",
+	"name": "trakt-tv",
 	"version": "1.0.0",
-	"description": "This is a way to sync your Letterboxd diary plugin to Obsidian",
+	"description": "Sync your trakt.tv watched shows to Obsidian.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -23,7 +23,6 @@
 	},
 	"dependencies": {
 		"fast-xml-parser": "^4.3.6",
-		"letterboxd": "^3.1.1",
-		"letterboxd-client": "^1.0.1"
+		"trakt.tv": "^8.2.0"
 	}
 }

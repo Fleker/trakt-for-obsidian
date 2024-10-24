@@ -1,9 +1,9 @@
 {
-	"id": "letterboxd-rss-sync",
-	"name": "Letterboxd Diary RSS Sync",
-	"version": "1.0.9",
+	"id": "trakt-tv",
+	"name": "Trakt.tv Sync",
+	"version": "1.0.0",
 	"minAppVersion": "1.4.16",
-	"description": "Syncs your public Letterboxd diary.",
+	"description": "Syncs your Trakt.tv shows.",
 	"author": "Nick Felker",
 	"authorUrl": "https://felker.dev",
 	"isDesktopOnly": false
