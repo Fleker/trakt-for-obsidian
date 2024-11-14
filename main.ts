@@ -1,8 +1,5 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, normalizePath } from 'obsidian';
-const Trakt = require('trakt.tv')
-
-const TRAKT_CLIENT = '4d3038be9baf44c391c5c4a99eff23095b41711a6c3b124b48c04ca737196640'
-const TRAKT_SECRET = '80502b7c3f410b93d8d141245394fdb70bf45d49443400280b15acb8fc31ff38'
+import Trakt from 'trakt.tv'
 
 /**
 {
@@ -96,6 +93,8 @@ interface TraktCheckedInEpisode {
 }
 
 interface TraktSettings {
+	apiKey?: string;
+	secretKey?: string;
 	// Refresh Token
 	refresh?: string;
 	ignoreBefore: string;
@@ -115,13 +114,16 @@ export default class TraktPlugin extends Plugin {
 	trakt: any;
 
 	async onload() {
+		await this.loadSettings();
+		if (!this.settings.apiKey || !this.settings.secretKey) {
+			return new Notice('Missing Trakt application keys')
+		}
 		this.trakt = new Trakt({
-			client_id: TRAKT_CLIENT,
-			client_secret: TRAKT_SECRET,
-			redirect_uri: 'obsidian://trakt-for-obsidian',
+			client_id: this.settings.apiKey,
+			client_secret: this.settings.secretKey,
+			redirect_uri: 'obsidian://trakt',
 			debug: true,
 		})
-		await this.loadSettings();
 
 		this.addCommand({
 			id: 'sync',
@@ -188,7 +190,7 @@ export default class TraktPlugin extends Plugin {
 
 		this.addSettingTab(new TraktSettingTab(this.app, this));
 
-		this.registerObsidianProtocolHandler('trakt-for-obsidian', async (data) => {
+		this.registerObsidianProtocolHandler('trakt', async (data) => {
 			const {code, state} = data
 			await this.trakt.exchange_code(code, state)
 			this.settings.refresh = JSON.stringify(this.trakt.export_token())
@@ -221,6 +223,28 @@ class TraktSettingTab extends PluginSettingTab {
 		this.settings = await this.plugin.loadData()
 
 		containerEl.empty();
+
+		new Setting(containerEl)
+			.setName('Trakt API Key')
+			.setDesc('Client API key')
+			.addText((component) => {
+				component.setValue(this.settings.apiKey)
+				component.onChange(async (value) => {
+					this.settings.apiKey = value
+					await this.plugin.saveSettings(this.settings)
+				})
+			})
+
+		new Setting(containerEl)
+			.setName('Trakt Secret Key')
+			.setDesc('Secret key')
+			.addText((component) => {
+				component.setValue(this.settings.secretKey)
+				component.onChange(async (value) => {
+					this.settings.secretKey = value
+					await this.plugin.saveSettings(this.settings)
+				})
+			})
 
 		if (this.settings.refresh) {
 			clearInterval(this.displayInterval as number)
