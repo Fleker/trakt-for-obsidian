@@ -114,21 +114,20 @@ export default class TraktPlugin extends Plugin {
 	trakt: any;
 
 	async onload() {
-		await this.loadSettings();
-		if (!this.settings.apiKey || !this.settings.secretKey) {
-			return new Notice('Missing Trakt application keys')
-		}
-		this.trakt = new Trakt({
-			client_id: this.settings.apiKey,
-			client_secret: this.settings.secretKey,
-			redirect_uri: 'obsidian://trakt',
-			debug: true,
-		})
-
 		this.addCommand({
 			id: 'sync',
 			name: 'Sync watched history',
 			callback: async () => {
+				await this.loadSettings();
+				if (!this.settings.apiKey || !this.settings.secretKey) {
+					return new Notice('Missing Trakt application keys')
+				}
+				this.trakt = new Trakt({
+					client_id: this.settings.apiKey,
+					client_secret: this.settings.secretKey,
+					redirect_uri: 'obsidian://trakt',
+					debug: true,
+				})
 				if (!this.settings.refresh) {
 					new Notice('Cannot get authorization')
 				}
