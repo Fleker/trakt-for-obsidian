@@ -114,11 +114,12 @@ export default class TraktPlugin extends Plugin {
 	trakt: any;
 
 	async onload() {
+		await this.loadSettings();
+
 		this.addCommand({
 			id: 'sync',
 			name: 'Sync watched history',
 			callback: async () => {
-				await this.loadSettings();
 				if (!this.settings.apiKey || !this.settings.secretKey) {
 					return new Notice('Missing Trakt application keys')
 				}
