@@ -227,7 +227,7 @@ class TraktSettingTab extends PluginSettingTab {
 			.setName('Trakt API key')
 			.setDesc('Client API key')
 			.addText((component) => {
-				component.setValue(this.settings.apiKey)
+				component.setValue(this.settings.apiKey ?? '')
 				component.onChange(async (value) => {
 					this.settings.apiKey = value
 					await this.plugin.saveSettings(this.settings)
@@ -238,7 +238,7 @@ class TraktSettingTab extends PluginSettingTab {
 			.setName('Trakt secret key')
 			.setDesc('Secret key')
 			.addText((component) => {
-				component.setValue(this.settings.secretKey)
+				component.setValue(this.settings.secretKey ?? '')
 				component.onChange(async (value) => {
 					this.settings.secretKey = value
 					await this.plugin.saveSettings(this.settings)
