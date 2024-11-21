@@ -1,7 +1,7 @@
 {
 	"id": "trakt-tv",
 	"name": "Trakt.tv Sync",
-	"version": "1.0.13",
+	"version": "1.0.14",
 	"minAppVersion": "1.4.16",
 	"description": "Syncs your Trakt.tv shows.",
 	"author": "Nick Felker",
