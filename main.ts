@@ -156,10 +156,10 @@ export default class TraktPlugin extends Plugin {
 					if (ratedDate > ignore) {
 						if (show.episode) {
 							checkinSet.add(`${show.show?.title}-${show.episode.season}-${show.episode.number}`)
-							checkinsSegments.push(`Gave ${show.rating}/10 to Season ${show.episode?.season}, Episode ${show.episode?.number} of [${show.show?.title}](https://trakt.tv/shows/${show.show?.ids.slug}): ["${show.episode?.title}"](https://trakt.tv/shows/${show.show?.ids.slug}/seasons/${show.episode?.season}/episodes/${show.episode?.number}) on [[${dateToJournal(ratedDate)}]]`)
+							checkinsSegments.push(`- Gave ${show.rating}/10 to Season ${show.episode?.season}, Episode ${show.episode?.number} of [${show.show?.title}](https://trakt.tv/shows/${show.show?.ids.slug}): ["${show.episode?.title}"](https://trakt.tv/shows/${show.show?.ids.slug}/seasons/${show.episode?.season}/episodes/${show.episode?.number}) on [[${dateToJournal(ratedDate)}]]`)
 						} else if (show.show) {
 							checkinSet.add(show.show.title)
-							checkinsSegments.push(`Gave ${show.rating}/10 to [${show.show?.title}](https://trakt.tv/shows/${show.show?.ids.slug}) on [[${dateToJournal(ratedDate)}]]`)
+							checkinsSegments.push(`- Gave ${show.rating}/10 to [${show.show?.title}](https://trakt.tv/shows/${show.show?.ids.slug}) on [[${dateToJournal(ratedDate)}]]`)
 						}
 					}
 				}
@@ -172,7 +172,7 @@ export default class TraktPlugin extends Plugin {
 							const slug = `${show.show.title}-${season.number}-${episode.number}`
 							const watchDate = new Date(episode.last_watched_at)
 							if (watchDate > ignore && !checkinSet.has(slug)) {
-								checkinsSegments.push(`Finished watching Season ${season.number}, Episode ${episode.number} of [${show.show?.title}](https://trakt.tv/shows/${show.show?.ids.slug}) on [[${dateToJournal(watchDate)}]]`)
+								checkinsSegments.push(`- Finished watching Season ${season.number}, Episode ${episode.number} of [${show.show?.title}](https://trakt.tv/shows/${show.show?.ids.slug}) on [[${dateToJournal(watchDate)}]]`)
 							}
 						}
 					}
