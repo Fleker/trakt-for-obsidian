@@ -220,7 +220,7 @@ class TraktSettingTab extends PluginSettingTab {
 
 	async display(): Promise<void> {
 		const {containerEl} = this;
-		this.settings = await this.plugin.loadData()
+		this.settings = await this.plugin.loadData() ?? DEFAULT_SETTINGS
 
 		containerEl.empty();
 
