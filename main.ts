@@ -115,6 +115,12 @@ export default class TraktPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		this.trakt = new Trakt({
+			client_id: this.settings.apiKey,
+			client_secret: this.settings.secretKey,
+			redirect_uri: 'obsidian://trakt',
+			debug: true,
+		})
 
 		this.addCommand({
 			id: 'sync',
