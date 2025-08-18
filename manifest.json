@@ -1,10 +1,10 @@
 {
 	"id": "trakt-tv",
 	"name": "Trakt.tv Sync",
-	"version": "1.0.19",
+	"version": "2.0.0",
 	"minAppVersion": "1.4.16",
-	"description": "Syncs your Trakt.tv shows.",
-	"author": "Nick Felker",
+	"description": "Syncs your Trakt.tv shows and movies with auto-linking to your notes.",
+	"author": "Nick Felker & Melih AK",
 	"authorUrl": "https://felker.dev",
 	"isDesktopOnly": false
 }
