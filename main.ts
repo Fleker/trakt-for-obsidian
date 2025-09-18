@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, normalizePath } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, normalizePath, requestUrl } from 'obsidian';
 import Trakt from 'trakt.tv'
 
 /**
@@ -125,14 +125,21 @@ interface TraktRating {
 }
 
 interface TraktSettings {
-	apiKey?: string;
-	secretKey?: string;
+	apiKey: string;
+	secretKey: string;
 	// Refresh Token
 	refresh?: string;
 	ignoreBefore: string;
 }
 
-// Interfaces for our processed, structured data
+/** Define an interface for the token data structure */
+interface TraktToken {
+    access_token: string;
+    refresh_token: string;
+    expires: number;
+}
+
+/** Interfaces for our processed, structured data */
 interface ProcessedEpisode {
     number: number;
     watched_at: string;
@@ -163,6 +170,8 @@ interface ProcessedMovie {
 }
 
 const DEFAULT_SETTINGS: TraktSettings = {
+    apiKey: '',
+    secretKey: '',
 	refresh: undefined,
 	ignoreBefore: '1970-01-01',
 }
@@ -264,13 +273,37 @@ export default class TraktPlugin extends Plugin {
 
 		this.addSettingTab(new TraktSettingTab(this.app, this));
 
-		this.registerObsidianProtocolHandler('trakt', async (data) => {
-			const {code, state} = data
-			await this.trakt.exchange_code(code, state)
-			this.settings.refresh = JSON.stringify(this.trakt.export_token())
-			await this.saveSettings(this.settings)
-			new Notice('You are now connected to Trakt')
-		})
+this.registerObsidianProtocolHandler("trakt", async (params) => {
+            const { code } = params;
+            if (!code) { new Notice("Trakt authentication code not found."); return; }
+
+            try {
+                const response = await requestUrl({
+                    method: 'POST',
+                    url: 'https://api.trakt.tv/oauth/token',
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        code: code,
+                        client_id: this.settings.apiKey,
+                        client_secret: this.settings.secretKey,
+                        redirect_uri: "obsidian://trakt",
+                        grant_type: "authorization_code"
+                    })
+                });
+                const tokens = response.json;
+                const tokenData: TraktToken = {
+                    access_token: tokens.access_token,
+                    refresh_token: tokens.refresh_token,
+                    expires: Date.now() + (tokens.expires_in * 1000),
+                };
+                this.settings.refresh = JSON.stringify(tokenData);
+                await this.saveSettings();
+                new Notice("Successfully connected to Trakt account!");
+            } catch (e) {
+                console.error("Trakt token exchange error:", e);
+                new Notice("Error getting Trakt token.");
+            }
+        });
 
 		if (this.settings.apiKey === undefined) {
 			return new Notice('Trakt.tv plugin needs API key')
@@ -481,8 +514,8 @@ export default class TraktPlugin extends Plugin {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
 
-	async saveSettings(settings: TraktSettings) {
-		await this.saveData(settings);
+	async saveSettings(settings?: TraktSettings) {
+		await this.saveData(settings ?? this.settings);
 	}
 }
 
@@ -502,72 +535,46 @@ class TraktSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		new Setting(containerEl)
-			.setName('Trakt API key')
-			.setDesc('Client API key')
-			.addText((component) => {
-				component.setValue(this.settings.apiKey ?? '')
-				component.onChange(async (value) => {
-					this.settings.apiKey = value
-					await this.plugin.saveSettings(this.settings)
-				})
-			})
+        new Setting(containerEl)
+            .setName("Trakt Client ID")
+            .setDesc("Your Trakt application's Client ID (API Key).")
+            .addText((text) => text.setPlaceholder("Enter your Client ID").setValue(this.plugin.settings.apiKey)
+                .onChange(async (value) => { this.plugin.settings.apiKey = value; await this.plugin.saveSettings(); }));
 
-		new Setting(containerEl)
-			.setName('Trakt secret key')
-			.setDesc('Secret key')
-			.addText((component) => {
-				component.setValue(this.settings.secretKey ?? '')
-				component.onChange(async (value) => {
-					this.settings.secretKey = value
-					await this.plugin.saveSettings(this.settings)
-				})
-			})
+        new Setting(containerEl)
+            .setName("Trakt Client Secret")
+            .setDesc("Your Trakt application's Client Secret.")
+            .addText((text) => text.setPlaceholder("Enter your Client Secret").setValue(this.plugin.settings.secretKey)
+                .onChange(async (value) => { this.plugin.settings.secretKey = value; await this.plugin.saveSettings(); }));
 
-		if (this.settings.refresh) {
-			clearInterval(this.displayInterval as number)
-			new Setting(containerEl)
-				.setName('Connected to Trakt')
-				.addButton((component) => {
-					component.setButtonText('Remove Authorization')
-					component.onClick(async () => {
-						delete this.settings.refresh
-						await this.plugin.saveSettings(this.settings)
-						new Notice('Logged out of Trakt account')
-						this.display() // Reload
-					})
-				})
-		} else {
-			new Setting(containerEl)
-				.setName('Connect to Trakt account')
-				.addButton((component) => {
-					component.setButtonText('Connect')
-					component.onClick(() => {
-						this.plugin.trakt = new Trakt({
-							client_id: this.settings.apiKey,
-							client_secret: this.settings.secretKey,
-							redirect_uri: 'obsidian://trakt',
-							debug: true,
-						})
-						const traktAuthUrl = this.plugin.trakt.get_url()
-						window.location.href = traktAuthUrl
-						this.displayInterval = setInterval(() => {
-							this.display()
-						}, 250)
-					})
-				})
-		}
+        if (this.settings.refresh) {
+            new Setting(containerEl).setName("Connection Status").setDesc("Successfully connected to your Trakt account.")
+                .addButton((button) => button.setButtonText("Disconnect").setWarning()
+                    .onClick(async () => {
+                        this.plugin.settings.refresh = undefined;
+                        await this.plugin.saveSettings();
+                        new Notice("Disconnected from Trakt.");
+                        this.display();
+                    }));
+        } else {
+            new Setting(containerEl).setName("Connect to Trakt").setDesc("After saving your keys, click here to connect your Trakt account.")
+                .addButton((button) => button.setButtonText("Connect").setCta()
+                    .onClick(() => {
+                        if (!this.plugin.settings.apiKey) { new Notice("Please enter a Client ID first."); return; }
+                        const authUrl = `https://trakt.tv/oauth/authorize?response_type=code&client_id=${this.plugin.settings.apiKey}&redirect_uri=obsidian://trakt`;
+                        window.open(authUrl);
+                    }));
+        }
 
-		new Setting(containerEl)
-			.setName('Ignore entries before')
-			.setDesc('Any events recorded before this date will be ignored')
-			.addText((component) => {
-				component.setPlaceholder('2024-01-01')
-				component.setValue(this.settings.ignoreBefore)
-				component.onChange(async (value) => {
-					this.settings.ignoreBefore = value
-					await this.plugin.saveSettings(this.settings)
-				})
-			})
+        new Setting(containerEl)
+            .setName("Ignore entries before")
+            .setDesc("Events recorded before this date will not be synced. (Format: YYYY.MM.DD)")
+            .addText((text) => text.setPlaceholder("1970.01.01").setValue(this.plugin.settings.ignoreBefore)
+                .onChange(async (value) => {
+                    if (/^\d{4}[-./]\d{2}[-./]\d{2}$/.test(value)) {
+                        this.plugin.settings.ignoreBefore = value.replace(/-/g, '.').replace(/\//g, '.');
+                        await this.plugin.saveSettings();
+                    }
+                }));        
 	}
 }
