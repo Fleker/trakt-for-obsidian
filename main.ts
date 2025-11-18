@@ -130,6 +130,7 @@ interface TraktSettings {
 	// Refresh Token
 	refresh?: string;
 	ignoreBefore: string;
+	filePath: string;
 }
 
 /** Define an interface for the token data structure */
@@ -174,6 +175,7 @@ const DEFAULT_SETTINGS: TraktSettings = {
     secretKey: '',
 	refresh: undefined,
 	ignoreBefore: '1970-01-01',
+	filePath: 'Trakt Watch Log.md',
 }
 
 function dateToJournal(date: Date) {
@@ -229,6 +231,9 @@ export default class TraktPlugin extends Plugin {
         if (!this.settings.refresh) {
             return new Notice('Not authenticated with Trakt. Please connect your account in settings.');
         }
+        if (!this.settings.filePath) {
+            return new Notice('Requires a watch log file to be specified in settings.')
+        }
 
         new Notice('Syncing with Trakt... This may take a moment.');
         this.posterCache.clear();
@@ -261,7 +266,7 @@ export default class TraktPlugin extends Plugin {
             const finalMarkdown = `${tvShowMarkdown}\n\n---\n\n${movieMarkdown}`;
 
             // 5. Write to file
-            await this.writeFile('Trakt Watch Log.md', finalMarkdown);
+            await this.writeFile(this.settings.filePath, finalMarkdown);
             new Notice('Trakt history sync complete!');
 
         } catch (e) {
@@ -575,6 +580,17 @@ class TraktSettingTab extends PluginSettingTab {
                         this.plugin.settings.ignoreBefore = value.replace(/-/g, '.').replace(/\//g, '.');
                         await this.plugin.saveSettings();
                     }
-                }));        
+                }));
+
+		new Setting(containerEl)
+			.setName("Log file path")
+			.setDesc("The path to the file where the watch log will be written.")
+			.addText((text) => text
+				.setPlaceholder("Trakt Watch Log.md")
+				.setValue(this.plugin.settings.filePath)
+				.onChange(async (value) => {
+					this.plugin.settings.filePath = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 }
