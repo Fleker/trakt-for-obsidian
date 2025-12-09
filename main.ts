@@ -131,6 +131,7 @@ interface TraktSettings {
 	refresh?: string;
 	ignoreBefore: string;
 	filePath: string;
+	sortOrder: 'chronological' | 'alphabetical';
 }
 
 /** Define an interface for the token data structure */
@@ -176,6 +177,7 @@ const DEFAULT_SETTINGS: TraktSettings = {
 	refresh: undefined,
 	ignoreBefore: '1970-01-01',
 	filePath: 'Trakt Watch Log.md',
+	sortOrder: 'chronological',
 }
 
 function dateToJournal(date: Date) {
@@ -259,6 +261,14 @@ export default class TraktPlugin extends Plugin {
             
             const processedShows = await this.processShowData(watchedShows, ratingsMap, ignoreDate);
             const processedMovies = await this.processMovieData(watchedMovies, ratingsMap, ignoreDate);
+
+            // Sort results based on settings
+            if (this.settings.sortOrder === 'alphabetical') {
+                processedShows.sort((a, b) => a.title.localeCompare(b.title));
+                processedMovies.sort((a, b) => a.title.localeCompare(b.title));
+            } else { // chronological
+                // Movies are already sorted reverse-chronologically inside processMovieData
+            }
 
             // 4. Generate Markdown content
             const tvShowMarkdown = this.generateTvShowMarkdown(processedShows);
@@ -580,6 +590,18 @@ class TraktSettingTab extends PluginSettingTab {
                         this.plugin.settings.ignoreBefore = value.replace(/-/g, '.').replace(/\//g, '.');
                         await this.plugin.saveSettings();
                     }
+                }));
+
+        new Setting(containerEl)
+            .setName("Sort order")
+            .setDesc("The sort order for movies and TV shows in the log file.")
+            .addDropdown(dropdown => dropdown
+                .addOption('chronological', 'Chronological (most recent first)')
+                .addOption('alphabetical', 'Alphabetical')
+                .setValue(this.plugin.settings.sortOrder)
+                .onChange(async (value: 'chronological' | 'alphabetical') => {
+                    this.plugin.settings.sortOrder = value;
+                    await this.plugin.saveSettings();
                 }));
 
 		new Setting(containerEl)
