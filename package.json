@@ -23,6 +23,6 @@
 		"typescript": "5.6.3"
 	},
 	"dependencies": {
-		"trakt.tv": "^8.2.0"
+		"trakt.tv": "github:fleker/trakt.tv"
 	}
 }
