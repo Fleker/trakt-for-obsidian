@@ -11,4 +11,14 @@ Gave 8/10 to Season 2, Episode 1 of [Abbott Elementary](https://trakt.tv/shows/a
 Finished watching Season 1, Episode 2 of [The Secret Lives of Mormon Wives](https://trakt.tv/shows/the-secret-lives-of-mormon-wives) on [[2024-09-22]]
 ```
 
+## Configuration
+
+To set up this app, you will need to [create a developer app](https://trakt.tv/oauth/applications) in Trakt. Since this doesn't need to be public, you can set it up however you want.
+
+![Screenshot](trakt.webp)
+
+Then take note of the API keys and save them in the plugin settings.
+
+Read [this blog post](https://fleker.medium.com/oauth-in-obsidian-plugins-7385aac41feb) on how I did it. Keep in mind the redirect URI has now changed to `obsidian://trakt`
+
 This plugin could use your feedback and help to make it a success!
