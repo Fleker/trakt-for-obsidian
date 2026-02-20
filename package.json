@@ -12,6 +12,9 @@
 	"keywords": [],
 	"author": "Nick Felker",
 	"license": "Apache-2.0",
+	"repository": {
+		"url": "https://github.com/fleker/trakt-for-obsidian"
+	},
 	"devDependencies": {
 		"@types/node": "^18.0.0",
 		"@typescript-eslint/eslint-plugin": "5.29.0",
@@ -21,8 +24,5 @@
 		"obsidian": "latest",
 		"tslib": "2.4.0",
 		"typescript": "5.6.3"
-	},
-	"dependencies": {
-		"trakt.tv": "github:fleker/trakt.tv"
 	}
 }

@@ -1,5 +1,6 @@
+import { debug } from 'console';
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, normalizePath, requestUrl } from 'obsidian';
-import Trakt from 'trakt.tv'
+const Trakt = require('./trakt.js')
 
 /**
 {
@@ -201,6 +202,10 @@ export default class TraktPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
+		// Inject Obsidian's requestUrl into trakt.js so it bypasses CORS.
+		// fetch() is blocked by Obsidian's renderer for cross-origin requests.
+		(globalThis as any).__obsidianRequestUrl = requestUrl;
+
 		this.addCommand({
 			id: 'sync',
 			name: 'Sync watched history',
@@ -227,7 +232,7 @@ export default class TraktPlugin extends Plugin {
 				// 	new Notice('Authentication error, reauthorization required')
 				// }
 
-				if (!this.settings.apiKey || !this.settings.secretKey) {
+        if (!this.settings.apiKey || !this.settings.secretKey) {
             return new Notice('Missing Trakt application keys');
         }
         if (!this.settings.refresh) {
@@ -242,14 +247,15 @@ export default class TraktPlugin extends Plugin {
         this.seasonDetailsCache.clear();
 
         try {
-            // 1. Authenticate
-            await this.trakt.import_token(JSON.parse(this.settings.refresh!));
-            const newToken = await this.trakt.refresh_token();
-            this.settings.refresh = JSON.stringify(newToken);
+            // 1. Authenticate — import_token refreshes internally if expired
+            const currentToken = await this.trakt.import_token(JSON.parse(this.settings.refresh!));
+            this.settings.refresh = JSON.stringify(currentToken);
             await this.saveSettings(this.settings);
 
             // 2. Fetch all necessary data
             const ignoreDate = new Date(this.settings.ignoreBefore);
+            const debugres = await  this.trakt.sync.watched({ type: 'shows' })
+            console.log(debugres)
             const [watchedShows, watchedMovies, allRatings] = await Promise.all([
                 this.trakt.sync.watched({ type: 'shows' }) as Promise<TraktWatchedShow[]>,
                 this.trakt.sync.watched({ type: 'movies' }) as Promise<TraktWatchedMovie[]>,
