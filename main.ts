@@ -133,6 +133,7 @@ interface TraktSettings {
 	ignoreBefore: string;
 	filePath: string;
 	sortOrder: 'chronological' | 'alphabetical';
+	displayType: 'simple' | 'tierlist';
 }
 
 /** Define an interface for the token data structure */
@@ -179,6 +180,7 @@ const DEFAULT_SETTINGS: TraktSettings = {
 	ignoreBefore: '1970-01-01',
 	filePath: 'Trakt Watch Log.md',
 	sortOrder: 'chronological',
+	displayType: 'simple',
 }
 
 function dateToJournal(date: Date) {
@@ -254,8 +256,6 @@ export default class TraktPlugin extends Plugin {
 
             // 2. Fetch all necessary data
             const ignoreDate = new Date(this.settings.ignoreBefore);
-            const debugres = await  this.trakt.sync.watched({ type: 'shows' })
-            console.log(debugres)
             const [watchedShows, watchedMovies, allRatings] = await Promise.all([
                 this.trakt.sync.watched({ type: 'shows' }) as Promise<TraktWatchedShow[]>,
                 this.trakt.sync.watched({ type: 'movies' }) as Promise<TraktWatchedMovie[]>,
@@ -277,9 +277,14 @@ export default class TraktPlugin extends Plugin {
             }
 
             // 4. Generate Markdown content
-            const tvShowMarkdown = this.generateTvShowMarkdown(processedShows);
-            const movieMarkdown = this.generateMovieMarkdown(processedMovies);
-            const finalMarkdown = `${tvShowMarkdown}\n\n---\n\n${movieMarkdown}`;
+            let finalMarkdown: string;
+            if (this.settings.displayType === 'tierlist') {
+                finalMarkdown = this.generateTierListMarkdown(processedShows, processedMovies);
+            } else {
+                const tvShowMarkdown = this.generateTvShowMarkdown(processedShows);
+                const movieMarkdown = this.generateMovieMarkdown(processedMovies);
+                finalMarkdown = `${tvShowMarkdown}\n\n---\n\n${movieMarkdown}`;
+            }
 
             // 5. Write to file
             await this.writeFile(this.settings.filePath, finalMarkdown);
@@ -521,7 +526,98 @@ this.registerObsidianProtocolHandler("trakt", async (params) => {
         return markdown;
     }
 
-		async writeFile(filePath: string, content: string): Promise<void> {
+	    generateTierListMarkdown(shows: ProcessedShow[], movies: ProcessedMovie[]): string {
+        let markdown = '# TV Show Tier List\n\n';
+
+        if (shows.length === 0) {
+            markdown += 'No TV shows watched yet.\n\n';
+        } else {
+            for (const show of shows) {
+                const seasonNumbers = show.seasons.map(s => s.number).sort((a, b) => a - b);
+                const seasonMap = new Map(show.seasons.map(s => [s.number, s]));
+                const maxEp = Math.max(...show.seasons.flatMap(s => s.episodes.map(e => e.number)), 0);
+
+                const showRatingText = show.rating ? ` (${formatRating(show.rating)})` : '';
+                markdown += `## [${show.title}](https://trakt.tv/shows/${show.slug})${showRatingText}\n\n`;
+
+                // Table header row: seasons as columns
+                markdown += `| | ${seasonNumbers.map(n => `S${n}`).join(' | ')} |\n`;
+                markdown += `| :-- |${seasonNumbers.map(() => ' :--: |').join('')}\n`;
+
+                // Poster row — season ratings in each season column
+                const seasonRatingCells = seasonNumbers.map(n => {
+                    const s = seasonMap.get(n);
+                    return s?.rating ? `<span class="rating-${s.rating}">${formatRating(s.rating)}</span>` : '';
+                });
+                markdown += `| ![](${show.posterUrl}) | ${seasonRatingCells.join(' | ')} |\n`;
+
+                // One row per episode number, columns per season
+                for (let ep = 1; ep <= maxEp; ep++) {
+                    const epPad = ep.toString().padStart(2, '0');
+                    const cells = seasonNumbers.map(n => {
+                        const episode = seasonMap.get(n)?.episodes.find(e => e.number === ep);
+                        if (!episode) return '';
+                        const link = `https://trakt.tv/shows/${show.slug}/seasons/${n}/episodes/${ep}`;
+                        if (episode.rating) {
+                            return `<span class="rating-${episode.rating}">[${episode.rating}★](${link})</span>`;
+                        }
+                        return `[-](${link})`;
+                    });
+                    markdown += `| x${epPad} | ${cells.join(' | ')} |\n`;
+                }
+
+                // Chronological episode log below table
+                markdown += '\n';
+                const allEpisodes = show.seasons
+                    .flatMap(s => s.episodes.map(e => ({ season: s.number, episode: e })))
+                    .sort((a, b) => new Date(a.episode.watched_at).getTime() - new Date(b.episode.watched_at).getTime());
+                for (const { season, episode } of allEpisodes) {
+                    const epPad = episode.number.toString().padStart(2, '0');
+                    const link = `https://trakt.tv/shows/${show.slug}/seasons/${season}/episodes/${episode.number}`;
+                    const ratingText = episode.rating ? `[${episode.rating}★](${link})` : '–';
+                    markdown += `${show.title} ${season}x${epPad}: ${ratingText} on [[${dateToJournal(new Date(episode.watched_at))}]]\n`;
+                }
+                markdown += '\n';
+            }
+        }
+
+        markdown += '---\n\n# Movie Tier List\n\n';
+
+        if (movies.length === 0) {
+            markdown += 'No movies watched yet.\n\n';
+        } else {
+            // Group movies by rating, highest first, unrated at end
+            const tiers = new Map<number | null, ProcessedMovie[]>();
+            for (const movie of movies) {
+                const key = movie.rating;
+                if (!tiers.has(key)) tiers.set(key, []);
+                tiers.get(key)!.push(movie);
+            }
+            const ratedKeys = [...tiers.keys()]
+                .filter((k): k is number => k !== null)
+                .sort((a, b) => b - a);
+            const allKeys: (number | null)[] = [...ratedKeys, ...(tiers.has(null) ? [null] : [])];
+
+            for (const rating of allKeys) {
+                const tierMovies = tiers.get(rating)!;
+                markdown += `## ${rating !== null ? `${rating}★` : 'Unrated'}\n\n`;
+                markdown += `| Poster | Details |\n|:---:|:---|\n`;
+                for (const movie of tierMovies) {
+                    const title = `**[${movie.title} (${movie.year})](https://trakt.tv/movies/${movie.slug})**`;
+                    const dateLink = `[[${dateToJournal(new Date(movie.watched_at))}]]`;
+                    const ratingSpan = movie.rating
+                        ? `<span class="rating-${movie.rating}">${movie.rating}★</span>`
+                        : 'Unrated';
+                    markdown += `| ![](${movie.posterUrl}) | ${title}<br>${dateLink}<br>${ratingSpan} |\n`;
+                }
+                markdown += '\n';
+            }
+        }
+
+        return markdown;
+    }
+
+	async writeFile(filePath: string, content: string): Promise<void> {
         const normalizedPath = normalizePath(filePath);
         const file = this.app.vault.getAbstractFileByPath(normalizedPath);
         if (file instanceof TFile) {
@@ -607,6 +703,18 @@ class TraktSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.sortOrder)
                 .onChange(async (value: 'chronological' | 'alphabetical') => {
                     this.plugin.settings.sortOrder = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName("Display type")
+            .setDesc("How the watch log is laid out.")
+            .addDropdown(dropdown => dropdown
+                .addOption('simple', 'Simple table')
+                .addOption('tierlist', 'Tier list')
+                .setValue(this.plugin.settings.displayType)
+                .onChange(async (value: 'simple' | 'tierlist') => {
+                    this.plugin.settings.displayType = value;
                     await this.plugin.saveSettings();
                 }));
 

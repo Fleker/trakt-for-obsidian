@@ -6,3 +6,25 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+.rating-1  { background-color: #FF4444; padding: 2px 5px; border-radius: 3px; }
+.rating-2  { background-color: #FF6633; padding: 2px 5px; border-radius: 3px; }
+.rating-3  { background-color: #FF8833; padding: 2px 5px; border-radius: 3px; }
+.rating-4  { background-color: #FFAA33; padding: 2px 5px; border-radius: 3px; }
+.rating-5  { background-color: #FFCC33; padding: 2px 5px; border-radius: 3px; }
+.rating-6  { background-color: #DDDD33; padding: 2px 5px; border-radius: 3px; }
+.rating-7  { background-color: #88CC33; padding: 2px 5px; border-radius: 3px; }
+.rating-8  { background-color: #44CC44; padding: 2px 5px; border-radius: 3px; }
+.rating-9  { background-color: #33AACC; padding: 2px 5px; border-radius: 3px; }
+.rating-10 { background-color: #AA44FF; padding: 2px 5px; border-radius: 3px; }
+
+.rating-1 a, .rating-2 a, .rating-3 a, .rating-9 a, .rating-10 a {
+    color: white !important;
+}
+
+.rating-4 a, .rating-5 a, .rating-6 a, .rating-7 a, .rating-8 a {
+    color: black !important
+}
+
+td img {
+    width: 100px;
+}
